@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<script>
+!(function(j,a,g){j.__itrace_conf = {bid: 'f43basl8-6nqu7l3w',rel: '0.0.1', spa: true, uid: '', plugins:['jserror','interface','perf','resource','flow','blank']};var b = a.createElement("script");var d = a.getElementsByTagName("script")[0];b.type = "text/javascript";b.crossorigin = true;b.async = true;b.onload = function(){j.__itrace && j.__itrace.setReady()};d.parentNode.insertBefore(b,d);b.src = g})(window, document, "https://g.alicdn.com/woodpeckerx/itrace-next/itrace.iife.js")
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>存钱打卡</title>
+<style>
+/* SECTION: reset & base */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#2ecc71;--green-dark:#27ae60;--green-light:#a8f0c6;
+  --blue:#3498db;--blue-light:#bee3f8;
+  --orange:#f39c12;--orange-light:#fdebd0;
+  --red:#e74c3c;--red-light:#fadbd8;
+  --purple:#9b59b6;--purple-light:#ebdef0;
+  --bg:#f0f4f3;--card:#fff;--text:#2c3e50;--text-sub:#7f8c8d;
+  --radius:16px;--shadow:0 2px 12px rgba(0,0,0,.06);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--text-sub:#a0a0a0;--shadow:0 2px 12px rgba(0,0,0,.3)}
+}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh;padding-bottom:calc(72px + var(--safe-b));overflow-x:hidden}
+button{font:inherit;cursor:pointer;border:none;background:none}
+input,select{font:inherit;border:none;outline:none}
+
+/* SECTION: header */
+.header{background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;padding:20px 16px 28px;text-align:center;position:relative}
+.header h1{font-size:22px;font-weight:700;letter-spacing:1px}
+.header .subtitle{font-size:13px;opacity:.85;margin-top:4px}
+.streak-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);border-radius:20px;padding:4px 14px;margin-top:10px;font-size:13px;backdrop-filter:blur(4px)}
+
+/* SECTION: sync bar */
+.sync-bar{position:fixed;top:0;left:0;right:0;z-index:150;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 12px;font-size:11px;color:#fff;transition:background .3s,transform .3s;transform:translateY(-100%)}
+.sync-bar.visible{transform:translateY(0)}
+.sync-bar.syncing{background:rgba(52,152,219,.92)}
+.sync-bar.synced{background:rgba(46,204,113,.92)}
+.sync-bar.error{background:rgba(231,76,60,.92)}
+.sync-bar .sync-dot{width:6px;height:6px;border-radius:50%;background:#fff}
+.sync-bar .sync-btn{background:rgba(255,255,255,.2);color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;transition:background .2s}
+.sync-bar .sync-btn:active{background:rgba(255,255,255,.35)}
+
+/* SECTION: tabs */
+.tab-bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);display:flex;border-top:1px solid rgba(0,0,0,.06);padding:4px 0 calc(4px + var(--safe-b));z-index:100;box-shadow:0 -2px 10px rgba(0,0,0,.05)}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;color:var(--text-sub);font-size:10px;transition:color .2s}
+.tab-btn svg{width:24px;height:24px;transition:transform .2s}
+.tab-btn.active{color:var(--green-dark)}
+.tab-btn.active svg{transform:scale(1.1)}
+
+/* SECTION: pages */
+.page{display:none;padding:16px;padding-top:12px;max-width:640px;margin:0 auto}
+.page.active{display:block}
+
+/* SECTION: cards */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card-title{font-size:14px;font-weight:600;color:var(--text-sub);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+/* SECTION: account cards */
+.account-card{position:relative;overflow:hidden}
+.account-card .amount{font-size:28px;font-weight:700;letter-spacing:-1px}
+.account-card .target{font-size:12px;color:var(--text-sub);margin-top:2px}
+.account-card .icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px}
+.savings-card .icon{background:var(--green-light);color:var(--green-dark)}
+.daily-card .icon{background:var(--blue-light);color:var(--blue)}
+.emergency-card .icon{background:var(--orange-light);color:var(--orange)}
+
+/* SECTION: progress bar */
+.progress-wrap{margin-top:10px}
+.progress-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text-sub);margin-bottom:4px}
+.progress-bar{height:8px;background:rgba(0,0,0,.06);border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.progress-fill.green{background:linear-gradient(90deg,var(--green),var(--green-dark))}
+.progress-fill.blue{background:linear-gradient(90deg,var(--blue),#2980b9)}
+.progress-fill.orange{background:linear-gradient(90deg,var(--orange),#e67e22)}
+.progress-fill.red{background:var(--red)}
+
+/* SECTION: weekly stats */
+.week-info{font-size:12px;color:var(--text-sub);margin-bottom:12px;text-align:center}
+.week-stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.week-stat{background:var(--bg);border-radius:12px;padding:14px 10px;text-align:center}
+.week-stat .ws-val{font-size:22px;font-weight:700;line-height:1.2}
+.week-stat .ws-label{font-size:11px;color:var(--text-sub);margin-top:3px}
+.week-summary{font-size:12px;color:var(--text-sub);text-align:center;padding:10px;background:var(--bg);border-radius:10px;line-height:1.6}
+.week-summary strong{color:var(--text)}
+
+/* SECTION: checkin */
+.checkin-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;border-radius:var(--radius);font-size:17px;font-weight:600;color:#fff;background:linear-gradient(135deg,var(--green),var(--green-dark));box-shadow:0 4px 16px rgba(46,204,113,.3);transition:transform .15s,box-shadow .15s;min-height:56px}
+.checkin-btn:active{transform:scale(.97);box-shadow:0 2px 8px rgba(46,204,113,.2)}
+.checkin-btn.done{background:linear-gradient(135deg,#95a5a6,#7f8c8d);box-shadow:none}
+
+/* SECTION: expense form */
+.expense-form{display:flex;gap:8px;flex-wrap:wrap}
+.expense-form input[type="number"]{flex:1;min-width:80px;padding:12px;border-radius:12px;background:var(--bg);font-size:16px;font-weight:600;text-align:center}
+.expense-form input[type="text"]{flex:2;min-width:120px;padding:12px;border-radius:12px;background:var(--bg);font-size:14px}
+.expense-form select{padding:12px;border-radius:12px;background:var(--bg);font-size:14px;min-width:80px}
+.expense-form button{padding:12px 20px;border-radius:12px;background:var(--green);color:#fff;font-weight:600;font-size:14px;min-height:44px}
+
+/* SECTION: expense list */
+.expense-item{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.expense-item:last-child{border-bottom:none}
+.expense-dot{width:8px;height:8px;border-radius:50%;margin-right:10px;flex-shrink:0}
+.expense-info{flex:1}
+.expense-info .name{font-size:14px;font-weight:500}
+.expense-info .meta{font-size:12px;color:var(--text-sub);margin-top:2px}
+.expense-amount{font-size:16px;font-weight:600;color:var(--red)}
+.expense-delete{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:var(--text-sub);font-size:18px;margin-left:8px;transition:background .2s}
+.expense-delete:hover{background:var(--red-light)}
+
+/* SECTION: budget items */
+.budget-item{padding:12px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.budget-item:last-child{border-bottom:none}
+.budget-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.budget-name{font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px}
+.budget-nums{font-size:13px;color:var(--text-sub)}
+
+/* SECTION: stats */
+.stat-row{display:flex;gap:10px;margin-bottom:14px}
+.stat-box{flex:1;background:var(--card);border-radius:var(--radius);padding:14px;text-align:center;box-shadow:var(--shadow)}
+.stat-box .val{font-size:24px;font-weight:700;margin-bottom:2px}
+.stat-box .label{font-size:12px;color:var(--text-sub)}
+
+/* SECTION: history */
+.history-month{font-size:14px;font-weight:600;color:var(--text-sub);margin:16px 0 8px;padding-left:4px}
+.history-day{display:flex;align-items:center;gap:10px;padding:8px 4px}
+.history-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.history-dot.green{background:var(--green)}
+.history-dot.gray{background:#bdc3c7}
+.history-date{font-size:13px;width:60px;flex-shrink:0;color:var(--text-sub)}
+.history-desc{flex:1;font-size:13px}
+
+/* SECTION: modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:flex-end;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-sheet{background:var(--card);border-radius:20px 20px 0 0;padding:24px 20px calc(24px + var(--safe-b));width:100%;max-width:640px;max-height:80vh;overflow-y:auto;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-sheet h3{font-size:18px;margin-bottom:16px;text-align:center}
+.modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:18px}
+
+/* SECTION: calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal-header{font-size:11px;color:var(--text-sub);padding:4px 0;font-weight:600}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:13px;position:relative}
+.cal-day.today{font-weight:700;color:var(--green-dark)}
+.cal-day.checked::after{content:'';position:absolute;inset:2px;border-radius:50%;background:var(--green-light);z-index:-1}
+.cal-day.checked{color:var(--green-dark);font-weight:600}
+
+/* SECTION: responsive */
+@media(min-width:640px){
+  .page{padding:20px 24px}
+  .account-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .account-grid .card{margin-bottom:0}
+  .stat-row{gap:14px}
+}
+
+/* SECTION: animations */
+@keyframes confetti{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-60px) scale(.5)}}
+.confetti-text{animation:confetti 1s ease forwards}
+.shake{animation:shake .4s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+/* SECTION: empty state */
+.empty-state{text-align:center;padding:32px 16px;color:var(--text-sub)}
+.empty-state .emoji{font-size:40px;margin-bottom:8px}
+.empty-state p{font-size:14px}
+
+/* SECTION: settings */
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.setting-row:last-child{border-bottom:none}
+.setting-label{font-size:14px}
+.setting-value{font-size:14px;color:var(--text-sub)}
+.setting-input{width:100px;padding:8px 12px;border-radius:8px;background:var(--bg);text-align:right;font-size:14px}
+.setting-sub{font-size:11px;color:var(--text-sub);margin-top:4px}
+</style>
+</head>
+<body>
+
+<!-- SECTION: sync bar -->
+<div class="sync-bar" id="syncBar">
+  <div class="sync-dot" id="syncDot"></div>
+  <span id="syncStatusText">初始化中...</span>
+  <button class="sync-btn" id="syncBtn">同步</button>
+</div>
+
+<!-- SECTION: header -->
+<div class="header">
+  <h1>💰 存钱打卡</h1>
+  <div class="subtitle">悉尼生活 · 三账户预算追踪</div>
+  <div class="streak-badge" id="streakBadge">
+    <span>🔥</span>
+    <span id="streakText">连续打卡 0 天</span>
+  </div>
+</div>
+
+<!-- SECTION: page-home -->
+<div class="page active" id="page-home">
+  <div class="account-grid">
+    <div class="card account-card savings-card">
+      <div class="card-title">🏦 储蓄账户</div>
+      <div class="amount" id="savingsBalance">$0</div>
+      <div class="target">目标 $31,200/年</div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span id="savingsPct">0%</span><span>$31,200</span></div>
+        <div class="progress-bar"><div class="progress-fill green" id="savingsBar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="card account-card daily-card">
+      <div class="card-title">🛒 日常账户</div>
+      <div class="amount" id="dailyBalance">$0</div>
+      <div class="target">两周预算 $350</div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span id="dailyPct">剩余 100%</span><span>$350</span></div>
+        <div class="progress-bar"><div class="progress-fill blue" id="dailyBar" style="width:100%"></div></div>
+      </div>
+    </div>
+    <div class="card account-card emergency-card">
+      <div class="card-title">🛡️ 备用金</div>
+      <div class="amount" id="emergencyBalance">$0</div>
+      <div class="target">封顶 $5,000</div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span id="emergencyPct">0%</span><span>$5,000</span></div>
+        <div class="progress-bar"><div class="progress-fill orange" id="emergencyBar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION: weekly stats -->
+  <div class="card" id="weeklyStatsCard">
+    <div class="card-title">📊 本周统计</div>
+    <div class="week-info" id="weekInfo">--</div>
+    <div class="week-stats-grid">
+      <div class="week-stat">
+        <div class="ws-val" id="wsSpent" style="color:var(--red)">$0</div>
+        <div class="ws-label">本周支出</div>
+      </div>
+      <div class="week-stat">
+        <div class="ws-val" id="wsBudget" style="color:var(--blue)">$0</div>
+        <div class="ws-label">剩余预算</div>
+      </div>
+      <div class="week-stat">
+        <div class="ws-val" id="wsCount">0</div>
+        <div class="ws-label">记账笔数</div>
+      </div>
+      <div class="week-stat">
+        <div class="ws-val" id="wsAvg" style="color:var(--orange)">$0</div>
+        <div class="ws-label">日均支出</div>
+      </div>
+    </div>
+    <div class="week-summary" id="weekSummary">暂无本周数据</div>
+  </div>
+
+  <!-- checkin -->
+  <div class="card" style="text-align:center">
+    <div class="card-title">📅 发薪日打卡</div>
+    <p style="font-size:13px;color:var(--text-sub);margin-bottom:10px">输入本次实发工资，固定预算不变，差额自动归入储蓄</p>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;justify-content:center">
+      <span style="font-size:20px;font-weight:700;color:var(--text)">$</span>
+      <input type="number" id="paycheckInput" value="2400" min="0" step="1" inputmode="numeric" style="width:120px;padding:10px 14px;border-radius:12px;background:var(--bg);font-size:22px;font-weight:700;text-align:center;border:2px solid var(--green-light)">
+    </div>
+    <div id="allocPreview" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;font-size:12px;color:var(--text-sub)">
+    </div>
+    <button class="checkin-btn" id="checkinBtn" data-primary-action="checkin">
+      ✨ 发薪打卡
+    </button>
+    <div style="margin-top:10px;font-size:12px;color:var(--text-sub)" id="lastCheckin">尚未打卡</div>
+  </div>
+
+  <!-- weekly budget -->
+  <div class="card">
+    <div class="card-title">📊 本周预算</div>
+    <div id="weeklyBudgetList">
+      <div class="budget-item">
+        <div class="budget-header">
+          <span class="budget-name">🥦 食材饮料</span>
+          <span class="budget-nums" id="foodNums">$0 / $115</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill green" id="foodBar" style="width:0%"></div></div>
+      </div>
+      <div class="budget-item">
+        <div class="budget-header">
+          <span class="budget-name">☕ 咖啡零食</span>
+          <span class="budget-nums" id="coffeeNums">$0 / $10</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill blue" id="coffeeBar" style="width:0%"></div></div>
+      </div>
+      <div class="budget-item">
+        <div class="budget-header">
+          <span class="budget-name">🔧 机动余额</span>
+          <span class="budget-nums" id="flexNums">$0 / $25</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill orange" id="flexBar" style="width:0%"></div></div>
+      </div>
+      <div class="budget-item">
+        <div class="budget-header">
+          <span class="budget-name">🚌 交通</span>
+          <span class="budget-nums" id="transportNums">$0 / $35</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill green" id="transportBar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION: page-expense -->
+<div class="page" id="page-expense">
+  <div class="card">
+    <div class="card-title">✏️ 记一笔</div>
+    <div class="expense-form">
+      <input type="number" id="expAmount" placeholder="金额" step="0.01" inputmode="decimal">
+      <input type="text" id="expName" placeholder="买了什么">
+      <select id="expCategory">
+        <option value="food">🥦 食材</option>
+        <option value="coffee">☕ 咖啡零食</option>
+        <option value="flex">🔧 机动</option>
+        <option value="transport">🚌 交通</option>
+        <option value="fixed">🏠 固定支出</option>
+      </select>
+      <button id="addExpBtn" data-primary-action="add-expense">记 账</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📝 本周账单</div>
+    <div id="expenseList"></div>
+    <div class="empty-state" id="emptyExpense" style="display:none">
+      <div class="emoji">📭</div>
+      <p>本周还没有支出记录</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION: page-calendar -->
+<div class="page" id="page-calendar">
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span>📅 打卡日历</span>
+      <span id="calMonthLabel" style="font-weight:400"></span>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📈 打卡记录</div>
+    <div id="historyList"></div>
+    <div class="empty-state" id="emptyHistory" style="display:none">
+      <div class="emoji">📋</div>
+      <p>还没有打卡记录，发薪日记得来打卡哦</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION: page-stats -->
+<div class="page" id="page-stats">
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="val" id="totalSaved" style="color:var(--green-dark)">$0</div>
+      <div class="label">累计储蓄</div>
+    </div>
+    <div class="stat-box">
+      <div class="val" id="totalSpent" style="color:var(--red)">$0</div>
+      <div class="label">累计支出</div>
+    </div>
+  </div>
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="val" id="saveRate" style="color:var(--green)">0%</div>
+      <div class="label">储蓄率</div>
+    </div>
+    <div class="stat-box">
+      <div class="val" id="checkinCount">0</div>
+      <div class="label">打卡次数</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🎯 年度目标追踪</div>
+    <div class="budget-item">
+      <div class="budget-header">
+        <span class="budget-name">🏦 储蓄 $31,200</span>
+        <span class="budget-nums" id="yearSavingsNums">$0</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill green" id="yearSavingsBar" style="width:0%"></div></div>
+    </div>
+    <div class="budget-item">
+      <div class="budget-header">
+        <span class="budget-name">🛡️ 备用金 $5,000</span>
+        <span class="budget-nums" id="yearEmergencyNums">$0</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill orange" id="yearEmergencyBar" style="width:0%"></div></div>
+    </div>
+    <div class="budget-item">
+      <div class="budget-header">
+        <span class="budget-name">💰 总攒钱 $39,000</span>
+        <span class="budget-nums" id="yearTotalNums">$0</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill green" id="yearTotalBar" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">💡 省钱小贴士</div>
+    <div id="tipContent" style="font-size:14px;line-height:1.7"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚙️ 设置</div>
+    <div class="setting-row">
+      <div>
+        <span class="setting-label">云端数据 ID</span>
+        <div class="setting-sub" id="binIdDisplay">尚未创建</div>
+      </div>
+      <button style="padding:8px 16px;border-radius:8px;background:var(--blue-light);color:var(--blue);font-size:13px;font-weight:600;min-height:36px" id="copyBinBtn">复制</button>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">重置所有数据</span>
+      <button style="padding:8px 16px;border-radius:8px;background:var(--red-light);color:var(--red);font-size:13px;font-weight:600;min-height:36px" id="resetBtn">重置</button>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION: tab-bar -->
+<nav class="tab-bar">
+  <button class="tab-btn active" data-page="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>首页</span>
+  </button>
+  <button class="tab-btn" data-page="expense">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <span>记账</span>
+  </button>
+  <button class="tab-btn" data-page="calendar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>日历</span>
+  </button>
+  <button class="tab-btn" data-page="stats">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>统计</span>
+  </button>
+</nav>
+
+<!-- SECTION: modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-sheet" id="modalSheet"></div>
+</div>
+
+<script>
+/* SECTION: cloud-config */
+var JSONBIN_API = 'https://api.jsonbin.io/v3/b';
+var JSONBIN_KEY = '$2a$10$lxE9Y.YQ5PpsuGdxVSw7U.KqkNKwGmV6iJMfEq8bx5F4VKqH3WfK.';
+var BIN_ID_STORAGE_KEY = 'savings_bin_id';
+var BIN_ID = '';
+
+/* SECTION: data-store */
+var STORAGE_KEY = 'savings_checkin_v1';
+var WEEKLY_BUDGET = { food: 115, coffee: 10, flex: 25, transport: 35 };
+var BIWEEKLY = { savings: 1200, daily: 350, emergency: 200, fixed: 650 };
+var YEARLY_GOAL = { savings: 31200, emergency: 5000, total: 39000 };
+var WEEKLY_BUDGET_TOTAL = 185;
+var TIPS = [
+  'Aldi 和亚洲超市是省钱主力，Coles/Woolworths 只买半价',
+  '鸡胸肉 $8-10/kg 是性价比最高的蛋白质来源',
+  '一次做 2-3 天份量，省时省燃气还省钱',
+  '周末咖啡豆自磨比每天买咖啡省 70% 以上',
+  '发薪日第一件事：先转储蓄再花，"先存后花"是关键',
+  '每月底检查机动余额，没花完的直接转入储蓄',
+  '买菜前列清单，避免冲动购物超预算',
+  '备用金攒到 $5,000 后自动并入储蓄，储蓄率升至 67%',
+  '记账坚持 21 天就能养成习惯，每天花 1 分钟就够',
+  '悉尼自来水可以直接喝，省下买瓶装水的钱'
+];
+
+/* SECTION: sync-engine */
+var syncTimeout = null;
+var isInitialized = false;
+
+function showSyncStatus(msg, type) {
+  var bar = document.getElementById('syncBar');
+  var dot = document.getElementById('syncDot');
+  var text = document.getElementById('syncStatusText');
+  bar.className = 'sync-bar visible ' + type;
+  text.textContent = msg;
+  if (type !== 'syncing' && type !== 'error') {
+    setTimeout(function() {
+      bar.classList.remove('visible');
+    }, 2500);
+  }
+}
+
+function hideSyncBar() {
+  var bar = document.getElementById('syncBar');
+  bar.classList.remove('visible');
+}
+
+function getBinIdFromUrl() {
+  var hash = window.location.hash;
+  if (hash && hash.indexOf('bin=') >= 0) {
+    return hash.split('bin=')[1].split('&')[0] || '';
+  }
+  return '';
+}
+
+function setBinIdInUrl(id) {
+  window.location.hash = 'bin=' + id;
+}
+
+function loadLocalData() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return null;
+}
+
+function saveLocalData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function getDefaultData() {
+  return {
+    savings: 0,
+    emergency: 0,
+    dailyUsed: 0,
+    expenses: [],
+    checkins: [],
+    currentWeekStart: getWeekStart(),
+    lastUpdated: Date.now()
+  };
+}
+
+function mergeData(local, remote) {
+  if (!local) return remote;
+  if (!remote) return local;
+  var lt = local.lastUpdated || 0;
+  var rt = remote.lastUpdated || 0;
+  if (rt >= lt) return remote;
+  return local;
+}
+
+function createRemoteBin(data) {
+  return fetch(JSONBIN_API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_KEY,
+      'X-Bin-Name': 'SavingsTracker'
+    },
+    body: JSON.stringify(data)
+  }).then(function(res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }).then(function(result) {
+    return result.metadata.id;
+  });
+}
+
+function readRemoteBin(binId) {
+  return fetch(JSONBIN_API + '/' + binId + '/latest', {
+    headers: { 'X-Master-Key': JSONBIN_KEY }
+  }).then(function(res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }).then(function(result) {
+    return result.record;
+  });
+}
+
+function updateRemoteBin(binId, data) {
+  return fetch(JSONBIN_API + '/' + binId, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_KEY
+    },
+    body: JSON.stringify(data)
+  }).then(function(res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  });
+}
+
+function scheduleSave(data) {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(function() {
+    if (BIN_ID) {
+      data.lastUpdated = Date.now();
+      updateRemoteBin(BIN_ID, data).then(function() {
+        showSyncStatus('已同步', 'synced');
+      }).catch(function() {
+        showSyncStatus('同步失败，数据已保存在本地', 'error');
+      });
+    }
+  }, 1200);
+}
+
+function manualSync() {
+  if (!BIN_ID) {
+    showSyncStatus('云端尚未创建数据', 'error');
+    return;
+  }
+  showSyncStatus('正在同步...', 'syncing');
+  readRemoteBin(BIN_ID).then(function(remoteData) {
+    var localData = loadLocalData();
+    var merged = mergeData(localData, remoteData);
+    saveLocalData(merged);
+    renderAll(merged);
+    showSyncStatus('同步成功', 'synced');
+  }).catch(function() {
+    showSyncStatus('同步失败', 'error');
+  });
+}
+
+function initCloudSync() {
+  var localData = loadLocalData() || getDefaultData();
+  var urlBinId = getBinIdFromUrl();
+  var storedBinId = localStorage.getItem(BIN_ID_STORAGE_KEY) || '';
+
+  BIN_ID = urlBinId || storedBinId;
+
+  /* render local data immediately */
+  renderAll(localData);
+  updateBinIdDisplay();
+
+  if (BIN_ID) {
+    /* try to load from cloud */
+    showSyncStatus('正在从云端加载...', 'syncing');
+    readRemoteBin(BIN_ID).then(function(remoteData) {
+      var merged = mergeData(localData, remoteData);
+      saveLocalData(merged);
+      BIN_ID = BIN_ID; /* keep existing */
+      localStorage.setItem(BIN_ID_STORAGE_KEY, BIN_ID);
+      setBinIdInUrl(BIN_ID);
+      renderAll(merged);
+      showSyncStatus('云端数据已加载', 'synced');
+      isInitialized = true;
+      updateBinIdDisplay();
+    }).catch(function() {
+      showSyncStatus('云端加载失败，使用本地数据', 'error');
+      isInitialized = true;
+    });
+  } else {
+    /* create new cloud bin */
+    showSyncStatus('正在创建云端存储...', 'syncing');
+    localData.lastUpdated = Date.now();
+    createRemoteBin(localData).then(function(newBinId) {
+      BIN_ID = newBinId;
+      localStorage.setItem(BIN_ID_STORAGE_KEY, BIN_ID);
+      setBinIdInUrl(BIN_ID);
+      saveLocalData(localData);
+      showSyncStatus('云端存储已创建', 'synced');
+      isInitialized = true;
+      updateBinIdDisplay();
+    }).catch(function() {
+      showSyncStatus('云端创建失败，数据仅保存在本地', 'error');
+      isInitialized = true;
+    });
+  }
+}
+
+function updateBinIdDisplay() {
+  var el = document.getElementById('binIdDisplay');
+  if (el) {
+    el.textContent = BIN_ID || '尚未创建';
+  }
+}
+
+function saveAndSync(data) {
+  data.lastUpdated = Date.now();
+  saveLocalData(data);
+  scheduleSave(data);
+}
+
+/* SECTION: date-utils */
+function getWeekStart() {
+  var now = new Date();
+  var day = now.getDay();
+  var diff = day === 0 ? 6 : day - 1;
+  var start = new Date(now);
+  start.setDate(now.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  return start.toISOString().split('T')[0];
+}
+
+function getWeekNumber() {
+  var now = new Date();
+  var start = new Date(now.getFullYear(), 0, 1);
+  var diff = now - start;
+  var oneWeek = 604800000;
+  return Math.ceil((diff / oneWeek) + 1);
+}
+
+function getWeekDayCount() {
+  var now = new Date();
+  var day = now.getDay();
+  return day === 0 ? 7 : day;
+}
+
+function getThisWeekExpenses(data) {
+  var ws = getWeekStart();
+  return data.expenses.filter(function(e) { return e.date >= ws; });
+}
+
+function getWeekStartLabel() {
+  var ws = getWeekStart();
+  var d = new Date(ws + 'T00:00:00');
+  return (d.getMonth() + 1) + '/' + d.getDate();
+}
+
+function getWeekEndLabel() {
+  var ws = getWeekStart();
+  var d = new Date(ws + 'T00:00:00');
+  d.setDate(d.getDate() + 6);
+  return (d.getMonth() + 1) + '/' + d.getDate();
+}
+
+function getBiweekStart() {
+  var data = loadLocalData();
+  if (data && data.checkins && data.checkins.length > 0) {
+    return data.checkins[data.checkins.length - 1].date;
+  }
+  return getWeekStart();
+}
+
+/* SECTION: format */
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString('en-AU');
+}
+
+function fmtDec(n) {
+  return '$' + n.toFixed(2);
+}
+
+function pct(part, total) {
+  if (total === 0) return 0;
+  return Math.min(100, Math.round(part / total * 100));
+}
+
+/* SECTION: render weekly stats */
+function renderWeeklyStats(data) {
+  var weekExp = getThisWeekExpenses(data);
+  var weekSpent = weekExp.reduce(function(s, e) { return s + e.amount; }, 0);
+  var weekRemaining = Math.max(0, WEEKLY_BUDGET_TOTAL - weekSpent);
+  var dayCount = getWeekDayCount();
+  var dailyAvg = dayCount > 0 ? weekSpent / dayCount : 0;
+
+  document.getElementById('wsSpent').textContent = fmt(weekSpent);
+  document.getElementById('wsBudget').textContent = fmt(weekRemaining);
+  document.getElementById('wsCount').textContent = weekExp.length;
+  document.getElementById('wsAvg').textContent = fmt(Math.round(dailyAvg));
+
+  /* week info label */
+  var wkNum = getWeekNumber();
+  var wkStart = getWeekStartLabel();
+  var wkEnd = getWeekEndLabel();
+  document.getElementById('weekInfo').textContent = '第 ' + wkNum + ' 周 · ' + wkStart + ' - ' + wkEnd;
+
+  /* summary text */
+  var summaryEl = document.getElementById('weekSummary');
+  if (weekExp.length === 0) {
+    summaryEl.textContent = '本周暂无支出，继续保持！';
+  } else {
+    var pctUsed = pct(weekSpent, WEEKLY_BUDGET_TOTAL);
+    var remainingDays = Math.max(0, 7 - dayCount);
+    if (pctUsed > 100) {
+      summaryEl.innerHTML = '本周已超出预算 <strong style="color:var(--red)">$' + Math.round(weekSpent - WEEKLY_BUDGET_TOTAL) + '</strong>';
+    } else if (pctUsed > 80) {
+      summaryEl.innerHTML = '已用 <strong>' + pctUsed + '%</strong> 预算，剩余 ' + remainingDays + ' 天，注意控制支出';
+    } else {
+      summaryEl.innerHTML = '已用 <strong>' + pctUsed + '%</strong> 预算，剩余 <strong style="color:var(--green-dark)">$' + Math.round(weekRemaining) + '</strong>，状态良好';
+    }
+  }
+}
+
+/* SECTION: render home */
+function renderHome(data) {
+  document.getElementById('savingsBalance').textContent = fmt(data.savings);
+  document.getElementById('dailyBalance').textContent = fmt(BIWEEKLY.daily - data.dailyUsed);
+  document.getElementById('emergencyBalance').textContent = fmt(data.emergency);
+
+  var sPct = pct(data.savings, YEARLY_GOAL.savings);
+  document.getElementById('savingsPct').textContent = sPct + '%';
+  document.getElementById('savingsBar').style.width = sPct + '%';
+
+  var dRemain = Math.max(0, BIWEEKLY.daily - data.dailyUsed);
+  var dPctVal = pct(dRemain, BIWEEKLY.daily);
+  document.getElementById('dailyPct').textContent = '剩余 ' + dPctVal + '%';
+  document.getElementById('dailyBar').style.width = dPctVal + '%';
+
+  var ePct = pct(data.emergency, YEARLY_GOAL.emergency);
+  document.getElementById('emergencyPct').textContent = ePct + '%';
+  document.getElementById('emergencyBar').style.width = ePct + '%';
+
+  /* weekly budgets */
+  var weekExp = getThisWeekExpenses(data);
+  var cats = { food: 0, coffee: 0, flex: 0, transport: 0 };
+  weekExp.forEach(function(e) { if (cats[e.category] !== undefined) cats[e.category] += e.amount; });
+
+  Object.keys(cats).forEach(function(cat) {
+    var el = document.getElementById(cat + 'Nums');
+    var bar = document.getElementById(cat + 'Bar');
+    if (el && bar) {
+      el.textContent = fmt(cats[cat]) + ' / ' + fmt(WEEKLY_BUDGET[cat]);
+      var p = pct(cats[cat], WEEKLY_BUDGET[cat]);
+      bar.style.width = p + '%';
+      if (p > 90) bar.classList.add('red'); else bar.classList.remove('red');
+    }
+  });
+
+  /* checkin */
+  var lastCheckin = data.checkins.length > 0 ? data.checkins[data.checkins.length - 1] : null;
+  var lastLabel = document.getElementById('lastCheckin');
+
+  if (lastCheckin) {
+    var d = new Date(lastCheckin.date + 'T00:00:00');
+    lastLabel.textContent = '上次打卡：' + (d.getMonth()+1) + '月' + d.getDate() + '日';
+  }
+
+  /* streak */
+  var streak = calcStreak(data.checkins);
+  document.getElementById('streakText').textContent = '连续打卡 ' + streak + ' 次';
+
+  /* weekly stats */
+  renderWeeklyStats(data);
+}
+
+function calcStreak(checkins) {
+  if (!checkins.length) return 0;
+  return checkins.length;
+}
+
+/* SECTION: render expenses */
+function renderExpenses(data) {
+  var list = document.getElementById('expenseList');
+  var empty = document.getElementById('emptyExpense');
+  var weekExp = getThisWeekExpenses(data);
+
+  if (weekExp.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  var catEmoji = { food: '🥦', coffee: '☕', flex: '🔧', transport: '🚌', fixed: '🏠' };
+  var catColor = { food: 'var(--green)', coffee: 'var(--blue)', flex: 'var(--orange)', transport: 'var(--purple)', fixed: '#95a5a6' };
+
+  var sorted = weekExp.slice().sort(function(a, b) { return b.timestamp - a.timestamp; });
+  var html = '';
+  sorted.forEach(function(e) {
+    var origIdx = data.expenses.indexOf(e);
+    html += '<div class="expense-item">' +
+      '<div class="expense-dot" style="background:' + catColor[e.category] + '"></div>' +
+      '<div class="expense-info"><div class="name">' + catEmoji[e.category] + ' ' + escHtml(e.name) + '</div>' +
+      '<div class="meta">' + e.date + '</div></div>' +
+      '<div class="expense-amount">-' + fmtDec(e.amount) + '</div>' +
+      '<button class="expense-delete" data-idx="' + origIdx + '">×</button></div>';
+  });
+  list.innerHTML = html;
+
+  list.querySelectorAll('.expense-delete').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var idx = parseInt(this.dataset.idx);
+      data.expenses.splice(idx, 1);
+      recalcDailyUsed(data);
+      saveAndSync(data);
+      renderAll(data);
+    });
+  });
+}
+
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function recalcDailyUsed(data) {
+  var biweekStart = getBiweekStart();
+  data.dailyUsed = data.expenses
+    .filter(function(e) { return e.date >= biweekStart && e.category !== 'fixed'; })
+    .reduce(function(s, e) { return s + e.amount; }, 0);
+}
+
+/* SECTION: render calendar */
+function renderCalendar(data) {
+  var grid = document.getElementById('calGrid');
+  var label = document.getElementById('calMonthLabel');
+  var now = new Date();
+  var year = now.getFullYear();
+  var month = now.getMonth();
+  label.textContent = year + '年' + (month + 1) + '月';
+
+  var firstDay = new Date(year, month, 1);
+  var lastDay = new Date(year, month + 1, 0);
+  var startWeekday = firstDay.getDay() || 7;
+  var totalDays = lastDay.getDate();
+
+  var checkedDates = {};
+  data.checkins.forEach(function(c) { checkedDates[c.date] = true; });
+  var todayStr = now.toISOString().split('T')[0];
+
+  var headers = ['一', '二', '三', '四', '五', '六', '日'];
+  var html = '';
+  headers.forEach(function(h) {
+    html += '<div class="cal-header">' + h + '</div>';
+  });
+
+  for (var i = 1; i < startWeekday; i++) {
+    html += '<div class="cal-day"></div>';
+  }
+
+  for (var d = 1; d <= totalDays; d++) {
+    var dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    var isToday = dateStr === todayStr;
+    var isChecked = !!checkedDates[dateStr];
+    var cls = 'cal-day';
+    if (isToday) cls += ' today';
+    if (isChecked) cls += ' checked';
+    html += '<div class="' + cls + '">' + d + '</div>';
+  }
+
+  grid.innerHTML = html;
+
+  /* history */
+  var histList = document.getElementById('historyList');
+  var emptyHist = document.getElementById('emptyHistory');
+  if (data.checkins.length === 0) {
+    histList.innerHTML = '';
+    emptyHist.style.display = 'block';
+  } else {
+    emptyHist.style.display = 'none';
+    var sorted = data.checkins.slice().reverse().slice(0, 20);
+    var histHtml = '';
+    sorted.forEach(function(c) {
+      var d = new Date(c.date + 'T00:00:00');
+      var payLabel = c.paycheck ? ' (工资' + fmt(c.paycheck) + ')' : '';
+      histHtml += '<div class="history-day">' +
+        '<div class="history-dot green"></div>' +
+        '<div class="history-date">' + (d.getMonth()+1) + '/' + d.getDate() + '</div>' +
+        '<div class="history-desc">发薪打卡' + payLabel + ' · 储蓄 +' + fmt(c.savings) + ' · 日常 +' + fmt(c.daily) + ' · 备用 +' + fmt(c.emergency) + '</div></div>';
+    });
+    histList.innerHTML = histHtml;
+  }
+}
+
+/* SECTION: render stats */
+function renderStats(data) {
+  var totalIncome = data.checkins.reduce(function(s, c) { return s + c.total; }, 0);
+  var totalSpent = data.expenses.reduce(function(s, e) { return s + e.amount; }, 0);
+  var totalSaved = data.savings + data.emergency;
+
+  document.getElementById('totalSaved').textContent = fmt(totalSaved);
+  document.getElementById('totalSpent').textContent = fmt(totalSpent);
+  document.getElementById('saveRate').textContent = totalIncome > 0 ? pct(totalSaved, totalIncome) + '%' : '0%';
+  document.getElementById('checkinCount').textContent = data.checkins.length;
+
+  document.getElementById('yearSavingsNums').textContent = fmt(data.savings) + ' / ' + fmt(YEARLY_GOAL.savings);
+  document.getElementById('yearSavingsBar').style.width = pct(data.savings, YEARLY_GOAL.savings) + '%';
+  document.getElementById('yearEmergencyNums').textContent = fmt(data.emergency) + ' / ' + fmt(YEARLY_GOAL.emergency);
+  document.getElementById('yearEmergencyBar').style.width = pct(data.emergency, YEARLY_GOAL.emergency) + '%';
+  document.getElementById('yearTotalNums').textContent = fmt(totalSaved) + ' / ' + fmt(YEARLY_GOAL.total);
+  document.getElementById('yearTotalBar').style.width = pct(totalSaved, YEARLY_GOAL.total) + '%';
+
+  /* tip */
+  var tipIdx = Math.floor(Date.now() / 86400000) % TIPS.length;
+  document.getElementById('tipContent').textContent = '💡 ' + TIPS[tipIdx];
+}
+
+/* SECTION: render all */
+function renderAll(data) {
+  renderHome(data);
+  renderExpenses(data);
+  renderCalendar(data);
+  renderStats(data);
+}
+
+/* SECTION: tab switch */
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    var pageId = 'page-' + btn.dataset.page;
+    document.getElementById(pageId).classList.add('active');
+  });
+});
+
+/* SECTION: paycheck preview */
+function updatePaycheckPreview() {
+  var val = parseFloat(document.getElementById('paycheckInput').value) || 0;
+  var fixed = BIWEEKLY.daily + BIWEEKLY.emergency + BIWEEKLY.fixed;
+  var extraSavings = Math.max(0, val - 2400);
+  var actualSavings = BIWEEKLY.savings + extraSavings;
+  var preview = document.getElementById('allocPreview');
+  if (val < fixed) {
+    preview.innerHTML = '<span style="color:var(--red)">工资不足以覆盖固定支出 $' + fixed + '</span>';
+  } else {
+    var html = '<span>储蓄 <strong style="color:var(--green-dark)">' + fmt(actualSavings) + '</strong></span>';
+    html += '<span>·</span><span>日常 $350</span>';
+    html += '<span>·</span><span>备用金 $200</span>';
+    html += '<span>·</span><span>固定 $650</span>';
+    if (extraSavings > 0) {
+      html += '<div style="width:100%;color:var(--green-dark);font-weight:600;margin-top:2px">比基准多存 ' + fmt(extraSavings) + ' !</div>';
+    }
+    preview.innerHTML = html;
+  }
+  var btn = document.getElementById('checkinBtn');
+  if (val > 0) {
+    btn.textContent = '✨ 发薪打卡 · 分配 ' + fmt(val);
+  } else {
+    btn.textContent = '✨ 发薪打卡';
+  }
+}
+document.getElementById('paycheckInput').addEventListener('input', updatePaycheckPreview);
+
+/* SECTION: checkin */
+document.getElementById('checkinBtn').addEventListener('click', function() {
+  var data = loadLocalData() || getDefaultData();
+  var today = new Date().toISOString().split('T')[0];
+  var alreadyChecked = data.checkins.some(function(c) { return c.date === today; });
+
+  if (alreadyChecked) {
+    this.classList.add('shake');
+    var self = this;
+    setTimeout(function() { self.classList.remove('shake'); }, 400);
+    return;
+  }
+
+  var paycheckVal = parseFloat(document.getElementById('paycheckInput').value) || 0;
+  var fixed = BIWEEKLY.daily + BIWEEKLY.emergency + BIWEEKLY.fixed;
+  if (paycheckVal < fixed) {
+    document.getElementById('paycheckInput').classList.add('shake');
+    setTimeout(function() { document.getElementById('paycheckInput').classList.remove('shake'); }, 400);
+    return;
+  }
+
+  var extraSavings = Math.max(0, paycheckVal - 2400);
+  var actualSavings = BIWEEKLY.savings + extraSavings;
+
+  var entry = {
+    date: today,
+    paycheck: paycheckVal,
+    savings: actualSavings,
+    daily: BIWEEKLY.daily,
+    emergency: BIWEEKLY.emergency,
+    fixed: BIWEEKLY.fixed,
+    total: paycheckVal,
+    timestamp: Date.now()
+  };
+
+  data.savings += actualSavings;
+  data.emergency += BIWEEKLY.emergency;
+  data.dailyUsed = 0;
+  data.checkins.push(entry);
+  saveAndSync(data);
+
+  /* animation */
+  this.classList.add('done');
+  this.textContent = '🎉 打卡成功！已分配 ' + fmt(paycheckVal);
+  var btn = this;
+  setTimeout(function() {
+    btn.classList.remove('done');
+    btn.textContent = '✨ 发薪打卡';
+  }, 2500);
+
+  renderAll(data);
+});
+
+/* SECTION: add expense */
+document.getElementById('addExpBtn').addEventListener('click', function() {
+  var amountInput = document.getElementById('expAmount');
+  var nameInput = document.getElementById('expName');
+  var catSelect = document.getElementById('expCategory');
+
+  var amount = parseFloat(amountInput.value);
+  if (!amount || amount <= 0) {
+    amountInput.classList.add('shake');
+    setTimeout(function() { amountInput.classList.remove('shake'); }, 400);
+    return;
+  }
+
+  var name = nameInput.value.trim() || catSelect.options[catSelect.selectedIndex].text.replace(/^.\s/, '');
+  var category = catSelect.value;
+  var today = new Date().toISOString().split('T')[0];
+
+  var data = loadLocalData() || getDefaultData();
+  data.expenses.push({
+    name: name,
+    amount: amount,
+    category: category,
+    date: today,
+    timestamp: Date.now()
+  });
+
+  if (category !== 'fixed') {
+    data.dailyUsed += amount;
+  }
+
+  saveAndSync(data);
+  amountInput.value = '';
+  nameInput.value = '';
+  renderAll(data);
+});
+
+/* SECTION: sync button */
+document.getElementById('syncBtn').addEventListener('click', function() {
+  manualSync();
+});
+
+/* SECTION: copy bin id */
+document.getElementById('copyBinBtn').addEventListener('click', function() {
+  if (!BIN_ID) {
+    showSyncStatus('暂无云端数据可复制', 'error');
+    return;
+  }
+  var url = window.location.href;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function() {
+      showSyncStatus('链接已复制，在其他设备打开即可同步', 'synced');
+    }).catch(function() {
+      showSyncStatus('复制失败，请手动复制地址栏链接', 'error');
+    });
+  } else {
+    showSyncStatus('请手动复制地址栏链接', 'error');
+  }
+});
+
+/* SECTION: reset */
+document.getElementById('resetBtn').addEventListener('click', function() {
+  if (confirm('确定要清除所有数据吗？这个操作不可恢复。')) {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(BIN_ID_STORAGE_KEY);
+    if (BIN_ID) {
+      fetch(JSONBIN_API + '/' + BIN_ID, {
+        method: 'DELETE',
+        headers: { 'X-Master-Key': JSONBIN_KEY }
+      }).catch(function() {});
+    }
+    location.reload();
+  }
+});
+
+/* SECTION: init */
+/* auto reset weekly if week changed */
+(function() {
+  var data = loadLocalData();
+  if (data) {
+    if (data.currentWeekStart !== getWeekStart()) {
+      data.currentWeekStart = getWeekStart();
+      saveLocalData(data);
+    }
+    renderAll(data);
+  }
+})();
+
+updatePaycheckPreview();
+initCloudSync();
+</script>
+</body>
+</html>
